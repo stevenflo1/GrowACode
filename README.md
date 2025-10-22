@@ -1,4 +1,4 @@
-# DevNet project of BSIT - 3B
+# DevNet project of BSIT - 3B GrowACode
 
 This Python application retrieves and displays public IP address information (IPv4 and/or IPv6), as well as additional network-related data such as geolocation, ISP, ASN, timezone, and country code. It is intended as a prototype tool for network technicians to quickly access diagnostic information about the network they are connected to.
 
