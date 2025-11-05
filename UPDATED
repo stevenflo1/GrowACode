@@ -1,0 +1,213 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, simpledialog
+import requests
+import time
+import threading
+from datetime import datetime, timezone
+import subprocess
+import socket
+import platform
+
+# ------------------- Helper Functions -------------------
+
+def type_text(widget, text, delay=0.01):
+    """Typing animation for output box."""
+    widget.config(state="normal")
+    widget.delete("1.0", tk.END)
+    for char in text:
+        widget.insert(tk.END, char)
+        widget.update()
+        time.sleep(delay)
+    widget.config(state="disabled")
+
+def get_utc_offset():
+    now = datetime.now(timezone.utc).astimezone()
+    offset_seconds = now.utcoffset().total_seconds()
+    sign = "+" if offset_seconds >= 0 else "-"
+    offset_seconds = abs(int(offset_seconds))
+    hours = offset_seconds // 3600
+    minutes = (offset_seconds % 3600) // 60
+    return f"UTC{sign}{hours:02d}:{minutes:02d}"
+
+# ------------------- Networking Functions -------------------
+
+def get_ip_info():
+    output_box.config(state="normal")
+    output_box.delete("1.0", tk.END)
+    type_text(output_box, "🔍 Fetching IP information...\n")
+    
+    def fetch():
+        try:
+            response = requests.get("https://ipinfo.io/json", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                ipv4_address = data.get("ip", "N/A")
+                hostname = data.get("hostname", "N/A")
+                city = data.get("city", "N/A")
+                region = data.get("region", "N/A")
+                country = data.get("country", "N/A")
+                loc = data.get("loc", "N/A")
+                org = data.get("org", "N/A")
+                postal = data.get("postal", "N/A")
+                tz_name = data.get("timezone", "N/A")
+                tz_offset = get_utc_offset()
+                timezone_str = f"{tz_name} ({tz_offset})"
+
+                result_text = (
+                    f"🌐 Public IP Details\n"
+                    f"──────────────────────────────\n"
+                    f"IPv4 Address: {ipv4_address}\n"
+                    f"Hostname: {hostname}\n"
+                    f"Location: {city}, {region}, {country}\n"
+                    f"Coordinates: {loc}\n"
+                    f"Organization: {org}\n"
+                    f"Postal Code: {postal}\n"
+                    f"🕒 Timezone: {timezone_str}\n"
+                )
+                type_text(output_box, result_text)
+            else:
+                messagebox.showerror("Error", f"Failed to fetch IP info (HTTP {response.status_code}).")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred:\n{e}")
+
+    threading.Thread(target=fetch).start()
+
+def ping_host():
+    host = simpledialog.askstring("Ping Host", "Enter hostname or IP to ping:")
+    if not host: return
+    output_box.config(state="normal")
+    output_box.delete("1.0", tk.END)
+    type_text(output_box, f"🏓 Pinging {host}...\n")
+    
+    def run_ping():
+        try:
+            count_flag = "-n" if platform.system().lower() == "windows" else "-c"
+            result = subprocess.run(["ping", count_flag, "4", host], capture_output=True, text=True)
+            type_text(output_box, result.stdout)
+        except Exception as e:
+            messagebox.showerror("Error", f"Ping failed:\n{e}")
+    
+    threading.Thread(target=run_ping).start()
+
+def traceroute_host():
+    host = simpledialog.askstring("Traceroute", "Enter hostname or IP for traceroute:")
+    if not host: return
+    output_box.config(state="normal")
+    output_box.delete("1.0", tk.END)
+    type_text(output_box, f"🛣 Tracing route to {host}...\n")
+    
+    def run_traceroute():
+        try:
+            cmd = ["tracert", host] if platform.system().lower() == "windows" else ["traceroute", host]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            type_text(output_box, result.stdout)
+        except Exception as e:
+            messagebox.showerror("Error", f"Traceroute failed:\n{e}")
+    
+    threading.Thread(target=run_traceroute).start()
+
+def dns_lookup():
+    domain = simpledialog.askstring("DNS Lookup", "Enter domain (e.g., example.com):")
+    if not domain: return
+    output_box.config(state="normal")
+    output_box.delete("1.0", tk.END)
+    type_text(output_box, f"🔍 Looking up {domain}...\n")
+    
+    def run_dns():
+        try:
+            ips = socket.gethostbyname_ex(domain)[2]
+            result_text = f"Domain: {domain}\nIP Addresses:\n" + "\n".join(ips)
+            type_text(output_box, result_text)
+        except Exception as e:
+            messagebox.showerror("Error", f"DNS lookup failed:\n{e}")
+    
+    threading.Thread(target=run_dns).start()
+
+def reverse_dns():
+    ip = simpledialog.askstring("Reverse DNS Lookup", "Enter IP address:")
+    if not ip: return
+    output_box.config(state="normal")
+    output_box.delete("1.0", tk.END)
+    type_text(output_box, f"🔍 Reverse DNS lookup for {ip}...\n")
+    
+    def run_reverse():
+        try:
+            host = socket.gethostbyaddr(ip)[0]
+            result_text = f"IP: {ip}\nHostname: {host}"
+            type_text(output_box, result_text)
+        except Exception as e:
+            messagebox.showerror("Error", f"Reverse DNS failed:\n{e}")
+    
+    threading.Thread(target=run_reverse).start()
+
+def local_network_info():
+    output_box.config(state="normal")
+    output_box.delete("1.0", tk.END)
+    type_text(output_box, "🏠 Gathering local network info...\n")
+    
+    def fetch_info():
+        try:
+            hostname = socket.gethostname()
+            local_ip = socket.gethostbyname(hostname)
+            result_text = (
+                f"Local Network Info\n"
+                f"──────────────────────────────\n"
+                f"Hostname: {hostname}\n"
+                f"Local IP Address: {local_ip}\n"
+            )
+            type_text(output_box, result_text)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to get local network info:\n{e}")
+    
+    threading.Thread(target=fetch_info).start()
+
+# ------------------- UI Setup -------------------
+
+root = tk.Tk()
+root.title("🌐 Network Utility App")
+root.geometry("900x750")
+root.configure(bg="#1f1f1f")
+root.resizable(False, False)
+
+# --- Styles ---
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("TLabel", background="#1f1f1f", foreground="#ffffff", font=("Segoe UI", 11))
+style.configure("Header.TLabel", background="#1f1f1f", foreground="#00bfff", font=("Segoe UI", 22, "bold"))
+style.configure("TButton", font=("Segoe UI", 11), padding=6, background="#282828", foreground="#ffffff")
+style.map("TButton",
+          background=[('active', '#00bfff')],
+          foreground=[('active', '#1f1f1f')])
+
+# --- Header ---
+header = ttk.Label(root, text="🌐 Network Utility App", style="Header.TLabel")
+header.pack(pady=15)
+
+# --- Buttons Frame ---
+button_frame = ttk.Frame(root, style="TFrame")
+button_frame.pack(pady=15, fill="x", padx=10)
+
+buttons = [
+    ("Get My IP Info", get_ip_info),
+    ("Ping Host", ping_host),
+    ("Traceroute", traceroute_host),
+    ("DNS Lookup", dns_lookup),
+    ("Reverse DNS", reverse_dns),
+    ("Local Info", local_network_info)
+]
+
+for text, func in buttons:
+    btn = ttk.Button(button_frame, text=text, command=func)
+    btn.pack(side="left", padx=10, pady=5, expand=True, fill="x")
+
+# --- Output Box ---
+output_box = tk.Text(root, height=32, width=100, bg="#121212", fg="#00ffcc", font=("Consolas", 11), state="disabled")
+output_box.pack(pady=10, padx=15, fill="both", expand=True)
+
+# --- Scrollbar ---
+scrollbar = ttk.Scrollbar(output_box, command=output_box.yview)
+output_box.config(yscrollcommand=scrollbar.set)
+scrollbar.pack(side="right", fill="y")
+
+# ------------------- Run App -------------------
+root.mainloop()
