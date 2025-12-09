@@ -2,8 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 # Import the functions to test
-# Ensure your ip_tool.py has: 
-# if __name__ == "__main__": window.mainloop()
 from ip_tool import get_ip_info, type_text_blue_details
 
 class TestIPInformationTool(unittest.TestCase):
@@ -44,8 +42,11 @@ class TestIPInformationTool(unittest.TestCase):
         # Configure requests.get to return these mocks in order
         mock_requests_get.side_effect = [mock_ipinfo_response, mock_ipwhois_response]
 
-        # Call the function
-        get_ip_info()
+        # Create a mock widget
+        mock_widget = MagicMock()
+
+        # Call the function with the mock widget
+        get_ip_info(widget=mock_widget)
 
         # Ensure type_text_blue_details was called once
         mock_type_text.assert_called_once()
@@ -67,8 +68,11 @@ class TestIPInformationTool(unittest.TestCase):
         # Configure requests.get to raise an exception
         mock_requests_get.side_effect = Exception("Network error")
 
-        # Call the function
-        get_ip_info()
+        # Create a mock widget
+        mock_widget = MagicMock()
+
+        # Call the function with the mock widget
+        get_ip_info(widget=mock_widget)
 
         # Ensure messagebox.showerror was called with the exception message
         mock_showerror.assert_called_once()
