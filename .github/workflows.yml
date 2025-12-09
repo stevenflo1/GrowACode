@@ -1,0 +1,47 @@
+name: Python Unit Tests
+
+# Controls when the action runs (on push/pull request to main and develop branches)
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+# A sequence of jobs to be executed
+jobs:
+  build-and-test:
+    # Use Ubuntu as the runner environment
+    runs-on: ubuntu-latest
+
+    # Define the strategy to test against multiple Python versions
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+
+    steps:
+      # 1. Checkout Code: Fetches the repository content (This step solves the "No such file" error)
+      - name: Checkout repository
+        uses: actions/checkout@v4 
+
+      # 2. Setup Python Environment
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # 3. Install Dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install requests and pyperclip which are used in the application
+          pip install requests pyperclip
+
+      # 4. Run Unit Tests (Crucial step for CI)
+      - name: Run unit tests with unittest
+        run: |
+          # Run the unit test file created by the team
+          python unit_tests.py
+
+      # 5. Display success message
+      - name: Display success message
+        run: echo "Build and tests passed successfully for Python ${{ matrix.python-version }}!"
