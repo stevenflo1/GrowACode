@@ -1,13 +1,14 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import tkinter as tk
-from ip_tool import get_ip_info, type_text_blue_details  # assume your main code is saved as ip_tool.py
+from ip_tool import get_ip_info, type_text_blue_details  # your main code
 
 class TestIPTool(unittest.TestCase):
 
     def setUp(self):
-        # Create a dummy Tkinter Text widget
+        # Create a headless Tkinter root
         self.root = tk.Tk()
+        self.root.withdraw()  # hide window in headless
         self.text_widget = tk.Text(self.root)
         self.text_widget.pack()
 
@@ -15,8 +16,28 @@ class TestIPTool(unittest.TestCase):
         self.root.destroy()
 
     @patch("ip_tool.requests.get")
+    def test_type_text_blue_details_inserts_text(self, mock_get):
+        # Prepare output text
+        output = (
+            "IP Address: 1.2.3.4\n"
+            "Country: Wonderland\n"
+            "Region: Magic\n"
+            "City: RabbitHole\n"
+            "Postal: 12345\n"
+            "Timezone: UTC+1\n"
+            "Country Code: WL\n"
+        )
+        # Call typing function with delay=0 for fast tests
+        type_text_blue_details(output, self.text_widget, delay=0)
+
+        # Check text widget content
+        content = self.text_widget.get("1.0", tk.END)
+        self.assertIn("IP Address: 1.2.3.4", content)
+        self.assertIn("Country: Wonderland", content)
+
+    @patch("ip_tool.requests.get")
     def test_get_ip_info_success(self, mock_get):
-        # Mock API response
+        # Mock successful API response
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "ip": "1.2.3.4",
@@ -30,26 +51,15 @@ class TestIPTool(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        # Patch the text widget to capture insert calls
-        with patch.object(self.text_widget, "insert") as mock_insert:
-            # call function with mocked widget
-            output = (
-                f"IP Address: 1.2.3.4\n"
-                f"Country: Wonderland\n"
-                f"Region: Magic\n"
-                f"City: RabbitHole\n"
-                f"Postal: 12345\n"
-                f"Timezone: UTC+1\n"
-                f"Country Code: WL\n"
-            )
-            type_text_blue_details(output, self.text_widget, delay=0)
-
-            # Ensure insert was called at least once
-            mock_insert.assert_called()
+        # Patch the Text widget for insertion
+        with patch("ip_tool.result_box", self.text_widget):
+            get_ip_info()
+            content = self.text_widget.get("1.0", tk.END)
+            self.assertIn("IP Address: 1.2.3.4", content)
 
     @patch("ip_tool.requests.get")
     def test_get_ip_info_api_failure(self, mock_get):
-        # Mock API response failure
+        # Mock API failure
         mock_response = MagicMock()
         mock_response.json.return_value = {"success": False, "message": "API error"}
         mock_get.return_value = mock_response
@@ -60,7 +70,7 @@ class TestIPTool(unittest.TestCase):
 
     @patch("ip_tool.requests.get")
     def test_get_ip_info_exception(self, mock_get):
-        # Simulate a network error
+        # Simulate network error
         mock_get.side_effect = Exception("Network failure")
         with patch("ip_tool.messagebox.showerror") as mock_error:
             get_ip_info()
