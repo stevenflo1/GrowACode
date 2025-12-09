@@ -33,7 +33,6 @@ jobs:
 
     - name: Run tests in headless mode
       run: |
-        # Start X virtual framebuffer
         Xvfb :99 -screen 0 1024x768x24 &
         export DISPLAY=:99
         python -m unittest discover -s . -p "test_*.py"
