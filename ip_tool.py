@@ -1,81 +1,66 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import os
+import requests
 import tkinter as tk
-from ip_tool import get_ip_info, type_text_blue_details  # adjust if your file has a different name
+from tkinter import messagebox
+import time
 
-# Ensure headless display before creating Tk root
-os.environ["DISPLAY"] = ":99"
 
-class TestIPTool(unittest.TestCase):
+# ==========================
+# GLOBAL TEXT WIDGET (required by your tests)
+# ==========================
+# Your tests patch: patch("ip_tool.result_box", self.text_widget)
+# So `result_box` MUST exist at module level.
+result_box = tk.Text()  # placeholder; will be replaced by tests
 
-    def setUp(self):
-        # Create a hidden Tkinter root window
-        self.root = tk.Tk()
-        self.root.withdraw()  # hide window in headless mode
-        self.text_widget = tk.Text(self.root)
-        self.text_widget.pack()
 
-    def tearDown(self):
-        self.root.destroy()
+# ==========================
+# TYPE TEXT FUNCTION
+# ==========================
+def type_text_blue_details(text, widget, delay=0):
+    """
+    Inserts text into a Text widget character by character.
+    Tests use delay=0 for instant insertion.
+    """
+    for char in text:
+        widget.insert(tk.END, char)
+        widget.update_idletasks()
+        if delay > 0:
+            time.sleep(delay)
 
-    def test_type_text_blue_details_inserts_text(self):
-        # Test typing function inserts text correctly
+
+# ==========================
+# GET IP INFO FUNCTION
+# ==========================
+def get_ip_info():
+    """
+    Fetch IP information from API and write output to result_box.
+    Tests expect:
+    - No arguments
+    - Use of messagebox.showerror on failure/exception
+    - Writes formatted output to result_box
+    """
+    try:
+        response = requests.get("https://ipapi.co/json/")
+        data = response.json()
+
+        # API error condition (Tests expect this key)
+        if not data.get("success", True):
+            messagebox.showerror("Error", data.get("message", "Unknown error"))
+            return
+
+        # Construct output EXACTLY like the test expects
         output = (
-            "IP Address: 1.2.3.4\n"
-            "Country: Wonderland\n"
-            "Region: Magic\n"
-            "City: RabbitHole\n"
-            "Postal: 12345\n"
-            "Timezone: UTC+1\n"
-            "Country Code: WL\n"
+            f"IP Address: {data.get('ip')}\n"
+            f"Country: {data.get('country')}\n"
+            f"Region: {data.get('region')}\n"
+            f"City: {data.get('city')}\n"
+            f"Postal: {data.get('postal')}\n"
+            f"Timezone: {data.get('timezone')}\n"
+            f"Country Code: {data.get('country_code')}\n"
         )
-        type_text_blue_details(output, self.text_widget, delay=0)  # delay=0 for fast tests
-        content = self.text_widget.get("1.0", tk.END)
-        self.assertIn("IP Address: 1.2.3.4", content)
-        self.assertIn("Country: Wonderland", content)
 
-    @patch("ip_tool.requests.get")
-    def test_get_ip_info_success(self, mock_get):
-        # Mock a successful API response
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "ip": "1.2.3.4",
-            "country": "Wonderland",
-            "country_code": "WL",
-            "region": "Magic",
-            "city": "RabbitHole",
-            "postal": "12345",
-            "timezone": "UTC+1",
-            "success": True
-        }
-        mock_get.return_value = mock_response
+        # Clear and insert into global result_box
+        result_box.delete("1.0", tk.END)
+        result_box.insert(tk.END, output)
 
-        # Patch the global result_box in ip_tool
-        with patch("ip_tool.result_box", self.text_widget):
-            get_ip_info()
-            content = self.text_widget.get("1.0", tk.END)
-            self.assertIn("IP Address: 1.2.3.4", content)
-
-    @patch("ip_tool.requests.get")
-    def test_get_ip_info_api_failure(self, mock_get):
-        # Mock API failure
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"success": False, "message": "API error"}
-        mock_get.return_value = mock_response
-
-        with patch("ip_tool.messagebox.showerror") as mock_error:
-            get_ip_info()
-            mock_error.assert_called_with("Error", "API error")
-
-    @patch("ip_tool.requests.get")
-    def test_get_ip_info_exception(self, mock_get):
-        # Simulate a network error
-        mock_get.side_effect = Exception("Network failure")
-        with patch("ip_tool.messagebox.showerror") as mock_error:
-            get_ip_info()
-            mock_error.assert_called_with("Error", "Network failure")
-
-
-if __name__ == "__main__":
-    unittest.main()
+    except Exception as e:
+        messagebox.showerror("Error", str(e))
